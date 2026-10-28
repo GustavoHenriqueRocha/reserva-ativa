@@ -1,0 +1,26 @@
+# Máquina reserva de dois leitores de chão de fábrica.
+# Cada leitor roda normalmente no servidor principal; se ele parar de responder
+# por 60 s, a reserva sobe o mesmo leitor aqui. Quando o principal volta e
+# responde 2 vezes seguidas, a reserva derruba o dela.
+
+[geral]
+intervalo = 10          # segundos entre rodadas
+assumir_apos = 60       # segundos com o principal fora antes de assumir
+devolver_apos = 2       # respostas seguidas do principal antes de devolver
+log = "reserva.log"     # com rotação (2 MB × 3)
+status_porta = 8790     # GET http://127.0.0.1:8790/status
+
+[[servico]]
+nome = "leitor-extrusora"
+comando = ["python", "servidor.py"]
+pasta = "/opt/leitor-extrusora"
+log = "leitor-extrusora.log"
+# basta um dos endereços responder: rede local e VPN
+checagem = { tipo = "http", urls = ["http://10.0.0.5:8770/status", "http://100.64.0.5:8770/status"], exigir_json = true }
+
+[[servico]]
+nome = "leitor-dosadores"
+comando = "python servidor.py --porta 8768"
+pasta = "/opt/leitor-dosadores"
+assumir_apos = 30       # este é mais crítico: assume mais rápido
+checagem = { tipo = "tcp", hosts = ["10.0.0.5", "100.64.0.5"], porta = 8768 }
